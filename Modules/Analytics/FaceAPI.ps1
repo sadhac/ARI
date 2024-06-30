@@ -1,13 +1,13 @@
 ﻿<#
 .Synopsis
-Inventory for Azure Search Services
+Inventory for Azure Face API
 
 .DESCRIPTION
 This script consolidates information for all microsoft.operationalinsights/workspaces and  resource provider in $Resources variable. 
-Excel Sheet Name: SearchServices
+Excel Sheet Name: Face API
 
 .Link
-https://github.com/microsoft/ARI/Modules/Analytics/SearchServices.ps1
+https://github.com/microsoft/ARI/Modules/Analytics/FaceAPI.ps1
 
 .COMPONENT
 This powershell Module is part of Azure Resource Inventory (ARI)
@@ -15,7 +15,7 @@ This powershell Module is part of Azure Resource Inventory (ARI)
 .NOTES
 Version: 3.0.2
 First Release Date: 19th November, 2020
-Authors: Claudio Merola and Renato Gregio 
+Authors: Claudio Merola
 
 #>
 
@@ -28,20 +28,21 @@ If ($Task -eq 'Processing')
 
     <######### Insert the resource extraction here ########>
 
-    $Search = $Resources | Where-Object {$_.TYPE -eq 'microsoft.search/searchservices'}
+    $FaceAPI = $Resources | Where-Object {$_.TYPE -eq 'microsoft.cognitiveservices/accounts' -and $_.Kind -eq 'Face'}
 
     <######### Insert the resource Process here ########>
 
-    if($Search)
+    if($FaceAPI)
         {
             $tmp = @()
 
-            foreach ($1 in $Search) {
+            foreach ($1 in $FaceAPI) {
                 $ResUCount = 1
                 $sub1 = $SUB | Where-Object { $_.id -eq $1.subscriptionId }
                 $data = $1.PROPERTIES
-                $RetDate = ''
-                $RetFeature = ''
+                $timecreated = $data.datecreated
+                $timecreated = [datetime]$timecreated
+                $timecreated = $timecreated.ToString("yyyy-MM-dd HH:mm")
                 $pvt = if(![string]::IsNullOrEmpty($data.privateendpointconnections)){$data.privateendpointconnections}else{'0'}
                 $Tags = if(![string]::IsNullOrEmpty($1.tags.psobject.properties)){$1.tags.psobject.properties}else{'0'}
                     foreach ($pv in $pvt)
@@ -53,17 +54,15 @@ If ($Task -eq 'Processing')
                                     'Subscription'                              = $sub1.Name;
                                     'Resource Group'                            = $1.RESOURCEGROUP;
                                     'Name'                                      = $1.NAME;
-                                    'Status'                                    = $data.status;
-                                    'Status Details'                            = $data.statusdetails;
                                     'SKU'                                       = $1.sku.name;
                                     'Public Network Access'                     = $data.publicnetworkaccess;
-                                    'Disable Local Authentication'              = $data.disablelocalauth;
-                                    'Hosting Mode'                              = $data.hostingmode;
-                                    'Semantic Search'                           = $data.semanticsearch;
-                                    'Encryption Compliance Status'              = $data.encryptionwithcmk.encryptioncompliancestatu;
-                                    'Encryption Enforcement'                    = $data.encryptionwithcmk.enforcement;
-                                    'Replica Count'                             = $data.replicacount;
-                                    'Network Rule Set'                          = $data.networkruleset.bypass;
+                                    'Creation Time'                             = $timecreated;
+                                    'Is Migrated'                               = $data.ismigrated;
+                                    'Custom Domain Name'                        = $data.customsubdomainname;
+                                    'Endpoint'                                  = $data.endpoint;
+                                    'Network Default Action'                    = $data.networkacls.defaultaction;
+                                    'IP Rules'                                  = $data.networkacls.iprules.count;
+                                    'Virtual Network Rules'                     = $data.networkacls.virtualnetworkrules.count;
                                     'Private Endpoint'                          = $priv;
                                     'Resource U'                                = $ResUCount;
                                     'Tag Name'                                  = [string]$Tag.Name;
@@ -84,31 +83,29 @@ Else
 {
     <######## $SmaResources.(RESOURCE FILE NAME) ##########>
 
-    if($SmaResources.SearchServices)
+    if($SmaResources.FaceAPI)
     {
 
-        $TableName = ('SearchTable_'+($SmaResources.SearchServices.id | Select-Object -Unique).count)
+        $TableName = ('FaceAPITable_'+($SmaResources.FaceAPI.id | Select-Object -Unique).count)
         $Style = New-ExcelStyle -HorizontalAlignment Center -AutoSize -NumberFormat '0'
 
         $condtxt = @()
-        $condtxt += New-ConditionalText stopped -Range D:D
-        $condtxt += New-ConditionalText enabled -Range G:G
+        $condtxt += New-ConditionalText F0 -Range D:D
+        $condtxt += New-ConditionalText enabled -Range E:E
 
         $Exc = New-Object System.Collections.Generic.List[System.Object]
         $Exc.Add('Subscription')
         $Exc.Add('Resource Group')
         $Exc.Add('Name')
-        $Exc.Add('Status')
-        $Exc.Add('Status Details')
         $Exc.Add('SKU')
         $Exc.Add('Public Network Access')
-        $Exc.Add('Disable Local Authentication')
-        $Exc.Add('Hosting Mode')
-        $Exc.Add('Semantic Search')
-        $Exc.Add('Encryption Compliance Status')
-        $Exc.Add('Encryption Enforcement')
-        $Exc.Add('Replica Count')
-        $Exc.Add('Network Rule Set')
+        $Exc.Add('Creation Time')
+        $Exc.Add('Is Migrated')
+        $Exc.Add('Custom Domain Name')
+        $Exc.Add('Endpoint')
+        $Exc.Add('Network Default Action')
+        $Exc.Add('IP Rules')
+        $Exc.Add('Virtual Network Rules')
         $Exc.Add('Private Endpoint')
         if($InTag)
             {
@@ -116,11 +113,11 @@ Else
                 $Exc.Add('Tag Value') 
             }
 
-        $ExcelVar = $SmaResources.SearchServices 
+        $ExcelVar = $SmaResources.FaceAPI 
 
         $ExcelVar | 
         ForEach-Object { [PSCustomObject]$_ } | Select-Object -Unique $Exc | 
-        Export-Excel -Path $File -WorksheetName 'Search Services' -AutoSize -MaxAutoSizeRows 100 -ConditionalText $condtxt -TableName $TableName -TableStyle $tableStyle -Style $Style
+        Export-Excel -Path $File -WorksheetName 'Face API' -AutoSize -MaxAutoSizeRows 100 -ConditionalText $condtxt -TableName $TableName -TableStyle $tableStyle -Style $Style
 
 
         <######## Insert Column comments and documentations here following this model #########>
